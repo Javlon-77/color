@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Block Puzzle Game</title>
+    <title>Block Puzzle Game with Preview</title>
     <style>
         :root {
             --bg-color: #2b2b40;
@@ -28,13 +28,14 @@
             justify-content: center;
             min-height: 100vh;
             overflow: hidden;
+            user-select: none;
         }
 
         .header {
             display: flex;
             justify-content: space-between;
-            width: 320px;
-            margin-bottom: 20px;
+            width: 340px;
+            margin-bottom: 15px;
             font-size: 1.2rem;
             font-weight: bold;
         }
@@ -59,13 +60,13 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.3);
             width: 340px;
             height: 340px;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .cell {
             background-color: var(--cell-bg);
             border-radius: 4px;
-            transition: background 0.15s ease;
+            transition: background 0.1s ease;
         }
 
         .dock {
@@ -85,10 +86,15 @@
             display: grid;
             gap: 2px;
             padding: 5px;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            transition: transform 0.1s;
         }
 
-        .piece-container:active {
-            cursor: grabbing;
+        .piece-container.selected {
+            border-color: #fff;
+            transform: scale(1.05);
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .p-block {
@@ -97,13 +103,24 @@
             border-radius: 3px;
         }
 
-        /* Ranglar */
+        /* Ranglar va Shafqof Preview ranglari */
         .color-yellow { background-color: #f1c40f; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+        .preview-yellow { background-color: rgba(241, 196, 15, 0.4) !important; }
+
         .color-orange { background-color: #e67e22; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+        .preview-orange { background-color: rgba(230, 126, 34, 0.4) !important; }
+
         .color-purple { background-color: #9b59b6; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+        .preview-purple { background-color: rgba(155, 89, 182, 0.4) !important; }
+
         .color-green  { background-color: #2ecc71; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+        .preview-green  { background-color: rgba(46, 204, 113, 0.4) !important; }
+
         .color-red    { background-color: #e74c3c; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+        .preview-red    { background-color: rgba(231, 76, 60, 0.4) !important; }
+
         .color-cyan   { background-color: #1abc9c; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+        .preview-cyan   { background-color: rgba(26, 188, 156, 0.4) !important; }
 
         .game-over {
             position: absolute;
@@ -147,7 +164,6 @@
     </div>
 
     <div class="board" id="board"></div>
-
     <div class="dock" id="dock"></div>
 
     <div class="game-over" id="gameOverScreen">
@@ -162,15 +178,16 @@
         let score = 0;
 
         const shapes = [
-            { shape: [[1,1],[1,1]], color: 'color-yellow' }, // 2x2 kvadrat
-            { shape: [[1,1,1]], color: 'color-orange' },      // 3talik chiziq
-            { shape: [[1],[1],[1]], color: 'color-purple' },   // Tik 3talik
-            { shape: [[1]], color: 'color-green' },            // Bitta katak
-            { shape: [[1,1,1,1]], color: 'color-red' },       // 4talik chiziq
-            { shape: [[1,1],[1,0]], color: 'color-cyan' }      // L shakli
+            { shape: [[1,1],[1,1]], color: 'color-yellow', preview: 'preview-yellow' },
+            { shape: [[1,1,1]], color: 'color-orange', preview: 'preview-orange' },
+            { shape: [[1],[1],[1]], color: 'color-purple', preview: 'preview-purple' },
+            { shape: [[1]], color: 'color-green', preview: 'preview-green' },
+            { shape: [[1,1,1,1]], color: 'color-red', preview: 'preview-red' },
+            { shape: [[1,1],[1,0]], color: 'color-cyan', preview: 'preview-cyan' }
         ];
 
         let currentPieces = [null, null, null];
+        let selectedPieceIndex = null;
 
         const boardEl = document.getElementById('board');
         const dockEl = document.getElementById('dock');
@@ -190,15 +207,18 @@
                     if (boardData[r][c]) {
                         cell.classList.add(boardData[r][c]);
                     }
+
+                    cell.addEventListener('mouseenter', () => handleCellOver(r, c));
+                    cell.addEventListener('click', () => handleCellClick(r, c));
                     
                     boardEl.appendChild(cell);
                 }
             }
+            boardEl.addEventListener('mouseleave', clearPreview);
         }
 
         function generatePieces() {
             currentPieces = [];
-            dockEl.innerHTML = '';
             for (let i = 0; i < 3; i++) {
                 let randomShape = shapes[Math.floor(Math.random() * shapes.length)];
                 currentPieces.push(JSON.parse(JSON.stringify(randomShape)));
@@ -213,6 +233,9 @@
                 if (!piece) return;
                 const container = document.createElement('div');
                 container.classList.add('piece-container');
+                if (selectedPieceIndex === index) {
+                    container.classList.add('selected');
+                }
                 container.style.gridTemplateColumns = `repeat(${piece.shape[0].length}, 22px)`;
                 
                 piece.shape.forEach(row => {
@@ -228,8 +251,8 @@
                     });
                 });
 
-                // Oddiy bosib tanlash va qo'yish mexanikasi (click-to-place yoki sodda drag)
-                container.addEventListener('click', () => {
+                container.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     selectPiece(index);
                 });
 
@@ -237,41 +260,10 @@
             });
         }
 
-        let selectedPieceIndex = null;
-
         function selectPiece(index) {
-            const containers = dockEl.children;
-            Array.from(containers).forEach(c => c.style.border = 'none');
             selectedPieceIndex = index;
-            containers[index].style.border = '2px solid #fff';
-            containers[index].style.borderRadius = '8px';
+            renderDock();
         }
-
-        boardEl.addEventListener('click', (e) => {
-            if (selectedPieceIndex === null) return;
-            const cell = e.target.closest('.cell');
-            if (!cell) return;
-
-            const r = parseInt(cell.dataset.row);
-            const c = parseInt(cell.dataset.col);
-
-            const piece = currentPieces[selectedPieceIndex];
-            if (canPlace(piece, r, c)) {
-                placePiece(piece, r, c);
-                currentPieces[selectedPieceIndex] = null;
-                selectedPieceIndex = null;
-                
-                clearLines();
-                initBoard();
-                renderDock();
-
-                if (currentPieces.every(p => p === null)) {
-                    generatePieces();
-                } else {
-                    checkGameOver();
-                }
-            }
-        });
 
         function canPlace(piece, startR, startC) {
             const shape = piece.shape;
@@ -287,6 +279,57 @@
                 }
             }
             return true;
+        }
+
+        function handleCellOver(startR, startC) {
+            clearPreview();
+            if (selectedPieceIndex === null) return;
+            const piece = currentPieces[selectedPieceIndex];
+            if (!piece) return;
+
+            if (canPlace(piece, startR, startC)) {
+                const shape = piece.shape;
+                for (let r = 0; r < shape.length; r++) {
+                    for (let c = 0; c < shape[r].length; c++) {
+                        if (shape[r][c] === 1) {
+                            let targetR = startR + r;
+                            let targetC = startC + c;
+                            let cellIndex = targetR * BOARD_SIZE + targetC;
+                            let cellEl = boardEl.children[cellIndex];
+                            if (cellEl && !cellEl.classList.contains(boardData[targetR][targetC])) {
+                                cellEl.classList.add(piece.preview);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function clearPreview() {
+            Array.from(boardEl.children).forEach(cell => {
+                shapes.forEach(s => cell.classList.remove(s.preview));
+            });
+        }
+
+        function handleCellClick(startR, startC) {
+            if (selectedPieceIndex === null) return;
+            const piece = currentPieces[selectedPieceIndex];
+
+            if (canPlace(piece, startR, startC)) {
+                placePiece(piece, startR, startC);
+                currentPieces[selectedPieceIndex] = null;
+                selectedPieceIndex = null;
+                
+                clearLines();
+                initBoard();
+                renderDock();
+
+                if (currentPieces.every(p => p === null)) {
+                    generatePieces();
+                } else {
+                    checkGameOver();
+                }
+            }
         }
 
         function placePiece(piece, startR, startC) {
@@ -306,26 +349,18 @@
             let rowsToClear = [];
             let colsToClear = [];
 
-            // Qatorlarni tekshirish
             for (let r = 0; r < BOARD_SIZE; r++) {
-                if (boardData[r].every(cell => cell !== null)) {
-                    rowsToClear.push(r);
-                }
+                if (boardData[r].every(cell => cell !== null)) rowsToClear.push(r);
             }
 
-            // Ustunlarni tekshirish
             for (let c = 0; c < BOARD_SIZE; c++) {
                 let fullCol = true;
                 for (let r = 0; r < BOARD_SIZE; r++) {
-                    if (boardData[r][c] === null) {
-                        fullCol = false;
-                        break;
-                    }
+                    if (boardData[r][c] === null) { fullCol = false; break; }
                 }
                 if (fullCol) colsToClear.push(c);
             }
 
-            // Tozalash va ball qo'shish
             rowsToClear.forEach(r => {
                 for (let c = 0; c < BOARD_SIZE; c++) boardData[r][c] = null;
                 score += 100;
@@ -347,10 +382,7 @@
             for (let piece of availablePieces) {
                 for (let r = 0; r < BOARD_SIZE; r++) {
                     for (let c = 0; c < BOARD_SIZE; c++) {
-                        if (canPlace(piece, r, c)) {
-                            canMove = true;
-                            break;
-                        }
+                        if (canPlace(piece, r, c)) { canMove = true; break; }
                     }
                     if (canMove) break;
                 }
@@ -368,11 +400,11 @@
             score = 0;
             scoreEl.textContent = score;
             gameOverScreen.style.display = 'none';
+            selectedPieceIndex = null;
             initBoard();
             generatePieces();
         }
 
-        // O'yinni boshlash
         initBoard();
         generatePieces();
     </script>
