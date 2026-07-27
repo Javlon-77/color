@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional Color Block Generator</title>
+    <title>Block Puzzle Game</title>
     <style>
         :root {
-            --bg-color: #f4f4f6;
-            --card-bg: #ffffff;
-            --text-color: #333333;
+            --bg-color: #2b2b40;
+            --board-bg: #1e1e2f;
+            --cell-bg: #2a2a40;
+            --text-color: #ffffff;
         }
 
         * {
@@ -26,214 +27,354 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            padding: 20px;
-            transition: background 0.3s ease;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 800px;
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
-            text-align: center;
-        }
-
-        h1 {
-            font-size: 1.8rem;
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
-        }
-
-        p {
-            color: #666;
-            margin-bottom: 25px;
-            font-size: 0.95rem;
-        }
-
-        /* Color Block Grid */
-        .color-block-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            grid-template-rows: repeat(2, 160px);
-            gap: 15px;
-            margin-bottom: 25px;
-            border-radius: 12px;
             overflow: hidden;
         }
 
-        .block {
+        .header {
             display: flex;
-            align-items: flex-end;
-            justify-content: flex-start;
-            padding: 15px;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            position: relative;
-            box-shadow: inset 0 0 0 rgba(0,0,0,0.1);
+            justify-content: space-between;
+            width: 320px;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
         }
 
-        .block:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
-        }
-
-        /* Span variations for dynamic look */
-        .block:nth-child(1) { grid-column: span 2; }
-        .block:nth-child(4) { grid-column: span 2; }
-
-        .hex-code {
-            background: rgba(0, 0, 0, 0.4);
-            color: #fff;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            letter-spacing: 1px;
-            backdrop-filter: blur(4px);
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-
-        .block:hover .hex-code {
-            opacity: 1;
-        }
-
-        /* Controls */
-        .controls {
+        .score-box {
             display: flex;
-            gap: 12px;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 15px;
+            border-radius: 20px;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 4px;
+            background-color: var(--board-bg);
+            padding: 10px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            width: 340px;
+            height: 340px;
+            margin-bottom: 30px;
+        }
+
+        .cell {
+            background-color: var(--cell-bg);
+            border-radius: 4px;
+            transition: background 0.15s ease;
+        }
+
+        .dock {
+            display: flex;
             justify-content: center;
+            gap: 15px;
+            height: 100px;
+            width: 340px;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 12px;
+            padding: 10px;
         }
 
-        button {
-            background-color: #111;
-            color: #fff;
+        .piece-container {
+            cursor: grab;
+            display: grid;
+            gap: 2px;
+            padding: 5px;
+        }
+
+        .piece-container:active {
+            cursor: grabbing;
+        }
+
+        .p-block {
+            width: 22px;
+            height: 22px;
+            border-radius: 3px;
+        }
+
+        /* Ranglar */
+        .color-yellow { background-color: #f1c40f; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+        .color-orange { background-color: #e67e22; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+        .color-purple { background-color: #9b59b6; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+        .color-green  { background-color: #2ecc71; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+        .color-red    { background-color: #e74c3c; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+        .color-cyan   { background-color: #1abc9c; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+
+        .game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            display: none;
+            z-index: 10;
+        }
+
+        .game-over h2 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            color: #e74c3c;
+        }
+
+        .game-over button {
+            padding: 10px 25px;
+            font-size: 1rem;
+            font-weight: bold;
+            background: #2ecc71;
+            color: white;
             border: none;
-            padding: 12px 24px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: background 0.2s ease, transform 0.1s ease;
-        }
-
-        button:hover {
-            background-color: #333;
-        }
-
-        button:active {
-            transform: scale(0.97);
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 25px;
-            background: #222;
-            color: #fff;
-            padding: 10px 20px;
             border-radius: 8px;
-            font-size: 0.9rem;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-        }
-
-        .toast.show {
-            opacity: 1;
-        }
-
-        @media (max-width: 600px) {
-            .color-block-grid {
-                grid-template-columns: 1fr;
-                grid-template-rows: auto;
-            }
-            .block {
-                height: 120px;
-            }
-            .block:nth-child(1), .block:nth-child(4) {
-                grid-column: span 1;
-            }
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
 
-    <div class="container">
-        <h1>Professional Color Block</h1>
-        <p>Estetik va zamonaviy ranglar kombinatsiyasini yarating. Nusxalash uchun blok ustiga bosing.</p>
-        
-        <div class="color-block-grid" id="grid">
-            <!-- JavaScript orqali bloklar qo'shiladi -->
-        </div>
-
-        <div class="controls">
-            <button id="generateBtn">Yangi Palitra</button>
+    <div class="header">
+        <div class="score-box">
+            🏆 <span id="score">0</span>
         </div>
     </div>
 
-    <div class="toast" id="toast">HEX kod nusxalandi!</div>
+    <div class="board" id="board"></div>
+
+    <div class="dock" id="dock"></div>
+
+    <div class="game-over" id="gameOverScreen">
+        <h2>O'yin Tugadi!</h2>
+        <p style="margin-bottom: 20px;">Natija: <span id="finalScore">0</span></p>
+        <button onclick="restartGame()">Qaytadan boshlash</button>
+    </div>
 
     <script>
-        const palettes = [
-            ["#1E293B", "#334155", "#64748B", "#CBD5E1", "#F1F5F9"], // Slate Minimal
-            ["#2C3E50", "#E74C3C", "#ECF0F1", "#BDC3C7", "#34495E"], // Modern Corporate
-            ["#2D3748", "#4A5568", "#ED8936", "#F6AD55", "#F7FAFC"], // Warm Terracotta
-            ["#0F172A", "#047857", "#10B981", "#6EE7B7", "#F0FDF4"], // Sage & Deep Navy
-            ["#3B2F2F", "#8C6D62", "#D7CCC8", "#EFEBE9", "#A1887F"], // Soft Earthy Tones
-            ["#222222", "#444444", "#E63946", "#F1FAEE", "#A8DADC"]  // Neo Classic
+        const BOARD_SIZE = 8;
+        let boardData = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(null));
+        let score = 0;
+
+        const shapes = [
+            { shape: [[1,1],[1,1]], color: 'color-yellow' }, // 2x2 kvadrat
+            { shape: [[1,1,1]], color: 'color-orange' },      // 3talik chiziq
+            { shape: [[1],[1],[1]], color: 'color-purple' },   // Tik 3talik
+            { shape: [[1]], color: 'color-green' },            // Bitta katak
+            { shape: [[1,1,1,1]], color: 'color-red' },       // 4talik chiziq
+            { shape: [[1,1],[1,0]], color: 'color-cyan' }      // L shakli
         ];
 
-        const grid = document.getElementById('grid');
-        const generateBtn = document.getElementById('generateBtn');
-        const toast = document.getElementById('toast');
+        let currentPieces = [null, null, null];
 
-        function getRandomPalette() {
-            const randomIndex = Math.floor(Math.random() * palettes.length);
-            return palettes[randomIndex];
-        }
+        const boardEl = document.getElementById('board');
+        const dockEl = document.getElementById('dock');
+        const scoreEl = document.getElementById('score');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreEl = document.getElementById('finalScore');
 
-        function renderBlocks() {
-            grid.innerHTML = '';
-            const currentColors = getRandomPalette();
-            
-            // 4 ta blok hosil qilamiz
-            for (let i = 0; i < 4; i++) {
-                const color = currentColors[i % currentColors.length];
-                const block = document.createElement('div');
-                block.classList.add('block');
-                block.style.backgroundColor = color;
-                
-                const hexSpan = document.createElement('span');
-                hexSpan.classList.add('hex-code');
-                hexSpan.textContent = color;
-                
-                block.appendChild(hexSpan);
-                
-                // Bosganda rang kodini xotiraga nusxalash
-                block.addEventListener('click', () => {
-                    navigator.clipboard.writeText(color);
-                    showToast(color);
-                });
-
-                grid.appendChild(block);
+        function initBoard() {
+            boardEl.innerHTML = '';
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                for (let c = 0; c < BOARD_SIZE; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.row = r;
+                    cell.dataset.col = c;
+                    
+                    if (boardData[r][c]) {
+                        cell.classList.add(boardData[r][c]);
+                    }
+                    
+                    boardEl.appendChild(cell);
+                }
             }
         }
 
-        function showToast(color) {
-            toast.textContent = `${color} nusxalandi!`;
-            toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 1500);
+        function generatePieces() {
+            currentPieces = [];
+            dockEl.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                let randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+                currentPieces.push(JSON.parse(JSON.stringify(randomShape)));
+            }
+            renderDock();
+            checkGameOver();
         }
 
-        generateBtn.addEventListener('click', renderBlocks);
+        function renderDock() {
+            dockEl.innerHTML = '';
+            currentPieces.forEach((piece, index) => {
+                if (!piece) return;
+                const container = document.createElement('div');
+                container.classList.add('piece-container');
+                container.style.gridTemplateColumns = `repeat(${piece.shape[0].length}, 22px)`;
+                
+                piece.shape.forEach(row => {
+                    row.forEach(val => {
+                        const block = document.createElement('div');
+                        if (val === 1) {
+                            block.classList.add('p-block', piece.color);
+                        } else {
+                            block.style.width = '22px';
+                            block.style.height = '22px';
+                        }
+                        container.appendChild(block);
+                    });
+                });
 
-        // Sahifa ochilganda avtish yaratish
-        renderBlocks();
+                // Oddiy bosib tanlash va qo'yish mexanikasi (click-to-place yoki sodda drag)
+                container.addEventListener('click', () => {
+                    selectPiece(index);
+                });
+
+                dockEl.appendChild(container);
+            });
+        }
+
+        let selectedPieceIndex = null;
+
+        function selectPiece(index) {
+            const containers = dockEl.children;
+            Array.from(containers).forEach(c => c.style.border = 'none');
+            selectedPieceIndex = index;
+            containers[index].style.border = '2px solid #fff';
+            containers[index].style.borderRadius = '8px';
+        }
+
+        boardEl.addEventListener('click', (e) => {
+            if (selectedPieceIndex === null) return;
+            const cell = e.target.closest('.cell');
+            if (!cell) return;
+
+            const r = parseInt(cell.dataset.row);
+            const c = parseInt(cell.dataset.col);
+
+            const piece = currentPieces[selectedPieceIndex];
+            if (canPlace(piece, r, c)) {
+                placePiece(piece, r, c);
+                currentPieces[selectedPieceIndex] = null;
+                selectedPieceIndex = null;
+                
+                clearLines();
+                initBoard();
+                renderDock();
+
+                if (currentPieces.every(p => p === null)) {
+                    generatePieces();
+                } else {
+                    checkGameOver();
+                }
+            }
+        });
+
+        function canPlace(piece, startR, startC) {
+            const shape = piece.shape;
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[r].length; c++) {
+                    if (shape[r][c] === 1) {
+                        let targetR = startR + r;
+                        let targetC = startC + c;
+                        if (targetR >= BOARD_SIZE || targetC >= BOARD_SIZE || boardData[targetR][targetC] !== null) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+
+        function placePiece(piece, startR, startC) {
+            const shape = piece.shape;
+            for (let r = 0; r < shape.length; r++) {
+                for (let c = 0; c < shape[r].length; c++) {
+                    if (shape[r][c] === 1) {
+                        boardData[startR + r][startC + c] = piece.color;
+                        score += 10;
+                    }
+                }
+            }
+            scoreEl.textContent = score;
+        }
+
+        function clearLines() {
+            let rowsToClear = [];
+            let colsToClear = [];
+
+            // Qatorlarni tekshirish
+            for (let r = 0; r < BOARD_SIZE; r++) {
+                if (boardData[r].every(cell => cell !== null)) {
+                    rowsToClear.push(r);
+                }
+            }
+
+            // Ustunlarni tekshirish
+            for (let c = 0; c < BOARD_SIZE; c++) {
+                let fullCol = true;
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    if (boardData[r][c] === null) {
+                        fullCol = false;
+                        break;
+                    }
+                }
+                if (fullCol) colsToClear.push(c);
+            }
+
+            // Tozalash va ball qo'shish
+            rowsToClear.forEach(r => {
+                for (let c = 0; c < BOARD_SIZE; c++) boardData[r][c] = null;
+                score += 100;
+            });
+
+            colsToClear.forEach(c => {
+                for (let r = 0; r < BOARD_SIZE; r++) boardData[r][c] = null;
+                score += 100;
+            });
+
+            scoreEl.textContent = score;
+        }
+
+        function checkGameOver() {
+            let availablePieces = currentPieces.filter(p => p !== null);
+            if (availablePieces.length === 0) return;
+
+            let canMove = false;
+            for (let piece of availablePieces) {
+                for (let r = 0; r < BOARD_SIZE; r++) {
+                    for (let c = 0; c < BOARD_SIZE; c++) {
+                        if (canPlace(piece, r, c)) {
+                            canMove = true;
+                            break;
+                        }
+                    }
+                    if (canMove) break;
+                }
+                if (canMove) break;
+            }
+
+            if (!canMove) {
+                finalScoreEl.textContent = score;
+                gameOverScreen.style.display = 'flex';
+            }
+        }
+
+        function restartGame() {
+            boardData = Array(BOARD_SIZE).fill(0).map(() => Array(BOARD_SIZE).fill(null));
+            score = 0;
+            scoreEl.textContent = score;
+            gameOverScreen.style.display = 'none';
+            initBoard();
+            generatePieces();
+        }
+
+        // O'yinni boshlash
+        initBoard();
+        generatePieces();
     </script>
 </body>
 </html>
